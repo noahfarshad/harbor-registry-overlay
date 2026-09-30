@@ -1,0 +1,14 @@
+# inventory.example/hosts.registry
+#
+# Add these lines to inventory/hosts. Each air-gapped environment has its own
+# inventory, so each lists its own registry host.
+
+[registry]
+registry01.example.coach
+
+# Add registry under the existing [linux:children] group:
+# [linux:children]
+# webservers
+# dbservers
+# appservers
+# registry

@@ -1,0 +1,13 @@
+# examples/staged-on-registry-host/hosts
+#
+# No repository. Transfer disk mounted on the registry host. Staged certificate and Docker RPMs.
+
+[registry]
+registry01.example.coach
+
+[linux:children]
+registry
+
+[all:vars]
+ansible_user=ansible
+ansible_python_interpreter=/usr/bin/python3

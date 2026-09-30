@@ -1,0 +1,16 @@
+---
+# Add these to group_vars/all/vault.yml, then re-encrypt.
+#
+# The artifact repository reuses the existing vault_repo_username and
+# vault_repo_password entries.
+
+# ===========================================================================
+# Harbor registry (REQUIRED for playbooks/linux/configure_registry.yml)
+# ===========================================================================
+vault_harbor_admin_password:  "REPLACE-WITH-HARBOR-ADMIN-PASSWORD"
+vault_harbor_db_password:     "REPLACE-WITH-HARBOR-DATABASE-PASSWORD"
+
+# ===========================================================================
+# Artifactory API token (only if artifact_repo_headers uses one)
+# ===========================================================================
+vault_artifactory_token:      ""

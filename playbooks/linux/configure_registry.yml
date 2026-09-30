@@ -1,0 +1,79 @@
+---
+# playbooks/linux/configure_registry.yml
+#
+# Deploys the Harbor container registry from its offline installer on a RHEL
+# host, with no internet access. Artifacts come from the environment's
+# repository or attached storage, as set in group_vars/all/artifacts.yml.
+# Run AFTER the host baseline (build_linux_vm.yml or an existing host).
+#
+# Usage:
+#   make linux-registry HOST=registry01.example.coach
+#   # or:
+#   ansible-playbook -i inventory/hosts \
+#                    playbooks/linux/configure_registry.yml \
+#                    --limit registry01.example.coach
+#
+# REQUIRED variables:
+#   group_vars/all/artifacts.yml           artifact_source and its settings
+#   group_vars/registry/harbor_artifacts.yml  harbor_installer_file, harbor_installer_sha256
+#   group_vars/registry/main.yml           harbor_projects, ports, tls mode
+#   host_vars/<host>.yml                   harbor_hostname
+#   group_vars/all/vault.yml               vault_harbor_admin_password, vault_harbor_db_password
+
+- name: Configure the Harbor container registry
+  hosts: registry
+  gather_facts: true
+  become: true
+  vars:
+    desired_state: present
+
+  pre_tasks:
+    - name: Confirm host is a RedHat-family member of [registry]
+      ansible.builtin.assert:
+        that:
+          - ansible_os_family == 'RedHat'
+          - inventory_hostname in groups['registry']
+        fail_msg: "Host must be a RedHat-family member of [registry]"
+
+    - name: Confirm the release manifest and secrets are loaded
+      ansible.builtin.assert:
+        that:
+          - harbor_installer_sha256 | default('') | length == 64
+          - harbor_hostname | default('') | length > 0
+          - harbor_admin_password | default('') | length > 0
+          - harbor_db_password | default('') | length > 0
+        fail_msg: >-
+          Copy harbor_artifacts.yml into group_vars/registry/, set harbor_hostname
+          in host_vars, and set the Harbor passwords in vault.yml.
+
+    - name: Confirm the attached storage is mounted
+      ansible.builtin.stat:
+        path: "{{ artifact_staging }}"
+      register: registry_staging
+      failed_when: not (registry_staging.stat.isdir | default(false))
+      when:
+        - artifact_source == 'staged'
+        - artifact_staged_on | default('target') == 'target'
+
+  roles:
+    - { role: install_docker_offline, tags: [docker, install] }
+    - { role: download_harbor_artifacts, tags: [harbor, artifacts] }
+    - { role: configure_harbor_tls, tags: [harbor, tls] }
+    - { role: install_harbor, tags: [harbor, install] }
+    - { role: configure_harbor_projects, tags: [harbor, projects] }
+
+  post_tasks:
+    - name: Open firewall ports for Harbor
+      ansible.posix.firewalld:
+        port: "{{ item }}/tcp"
+        permanent: true
+        state: enabled
+        immediate: true
+      loop: "{{ firewall_open_tcp_ports }}"
+      when: enable_firewall | bool
+      tags: [firewall]
+
+    - name: Verify the registry
+      ansible.builtin.include_role:
+        name: verify_harbor
+      tags: [verify]

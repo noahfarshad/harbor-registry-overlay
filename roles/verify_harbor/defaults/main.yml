@@ -1,0 +1,7 @@
+---
+# defaults file for verify_harbor
+
+harbor_api_url: "https://{{ harbor_hostname }}:{{ harbor_https_port | default(443) }}/api/v2.0"
+harbor_api_validate_certs: true
+harbor_install_dir: "{{ install_root | default('/opt') }}/harbor"
+harbor_verify_cert_warn_days: 30

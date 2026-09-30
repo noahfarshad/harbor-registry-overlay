@@ -1,0 +1,55 @@
+---
+# tasks file for configure_harbor_tls — present
+
+- name: Request the certificate from IdM and hand renewal to certmonger
+  ansible.builtin.command:
+    cmd: >-
+      ipa-getcert request
+      -f {{ harbor_tls_cert }}
+      -k {{ harbor_tls_key }}
+      -K {{ harbor_tls_principal }}
+      -N CN={{ harbor_hostname }}
+      -D {{ harbor_hostname }}
+      -o root -O root -m 0600 -M 0644
+    creates: "{{ harbor_tls_key }}"
+  when: harbor_tls_mode == 'ipa'
+
+- name: Wait for IdM to issue the certificate
+  ansible.builtin.command:
+    cmd: "ipa-getcert status -f {{ harbor_tls_cert }}"
+  register: harbor_tls_ipa_status
+  changed_when: false
+  retries: "{{ harbor_tls_ipa_wait_retries }}"
+  delay: "{{ harbor_tls_ipa_wait_delay }}"
+  until: "'MONITORING' in harbor_tls_ipa_status.stdout"
+  when: harbor_tls_mode == 'ipa'
+
+- name: Copy the staged certificate
+  ansible.builtin.copy:
+    src: "{{ harbor_tls_staged_cert }}"
+    dest: "{{ harbor_tls_cert }}"
+    remote_src: "{{ artifact_staged_on | default('target') == 'target' }}"
+    owner: root
+    group: root
+    mode: "0644"
+  when: harbor_tls_mode == 'staged'
+
+- name: Copy the staged private key
+  ansible.builtin.copy:
+    src: "{{ harbor_tls_staged_key }}"
+    dest: "{{ harbor_tls_key }}"
+    remote_src: "{{ artifact_staged_on | default('target') == 'target' }}"
+    owner: root
+    group: root
+    mode: "0600"
+  when: harbor_tls_mode == 'staged'
+
+- name: Read the certificate
+  ansible.builtin.command:
+    cmd: "openssl x509 -in {{ harbor_tls_cert }} -noout -subject -enddate"
+  register: harbor_tls_cert_info
+  changed_when: false
+
+- name: Report the certificate in use
+  ansible.builtin.debug:
+    msg: "{{ harbor_tls_cert_info.stdout_lines }}"

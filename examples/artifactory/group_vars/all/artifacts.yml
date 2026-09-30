@@ -1,0 +1,11 @@
+---
+# group_vars/all/artifacts.yml — Artifactory generic repository, token auth
+
+artifact_source:              repo
+artifact_repo_url:            "https://artifactory.example.coach/artifactory/vmware-generic"
+artifact_repo_username:       ""
+artifact_repo_password:       ""
+artifact_repo_headers:
+  Authorization: "Bearer {{ vault_artifactory_token }}"
+artifact_repo_validate_certs: true
+artifact_staged_on:           target

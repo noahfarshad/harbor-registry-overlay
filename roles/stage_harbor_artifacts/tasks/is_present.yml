@@ -1,0 +1,96 @@
+---
+# tasks file for stage_harbor_artifacts — present
+
+- name: Create the kit directory
+  ansible.builtin.file:
+    path: "{{ stage_harbor_output_dir }}"
+    state: directory
+    mode: "0750"
+
+- name: Download the Harbor offline installer
+  ansible.builtin.get_url:
+    url: "{{ stage_harbor_release_url }}/{{ stage_harbor_installer_file }}"
+    dest: "{{ stage_harbor_output_dir }}/{{ stage_harbor_installer_file }}"
+    mode: "0640"
+
+- name: Download the installer signature
+  ansible.builtin.get_url:
+    url: "{{ stage_harbor_release_url }}/{{ stage_harbor_installer_file }}.asc"
+    dest: "{{ stage_harbor_output_dir }}/{{ stage_harbor_installer_file }}.asc"
+    mode: "0640"
+  failed_when: false
+
+- name: Read the installer checksum
+  ansible.builtin.stat:
+    path: "{{ stage_harbor_output_dir }}/{{ stage_harbor_installer_file }}"
+    checksum_algorithm: sha256
+    get_checksum: true
+  register: stage_harbor_installer
+
+- name: Download the Docker Engine and Compose RPMs
+  ansible.builtin.command:
+    cmd: >-
+      dnf download --resolve --destdir {{ stage_harbor_output_dir }}/docker
+      {{ stage_harbor_docker_packages | join(' ') }}
+    creates: "{{ stage_harbor_output_dir }}/docker"
+  when: stage_harbor_docker_rpms | bool
+
+- name: Write the manifest as a group_vars file
+  ansible.builtin.template:
+    src: harbor_artifacts.yml.j2
+    dest: "{{ stage_harbor_output_dir }}/harbor_artifacts.yml"
+    mode: "0640"
+
+- name: Push the installer and manifest to the repository
+  ansible.builtin.uri:
+    url: "{{ stage_harbor_repo_url }}/{{ stage_harbor_repo_path }}/{{ item }}"
+    method: PUT
+    src: "{{ stage_harbor_output_dir }}/{{ item }}"
+    remote_src: true
+    force_basic_auth: "{{ (stage_harbor_repo_username | length > 0) | bool }}"
+    url_username: "{{ stage_harbor_repo_username | default(omit, true) }}"
+    url_password: "{{ stage_harbor_repo_password | default(omit, true) }}"
+    headers: "{{ stage_harbor_repo_headers }}"
+    validate_certs: "{{ stage_harbor_repo_validate_certs }}"
+    status_code: [200, 201, 204]
+  loop:
+    - "{{ stage_harbor_installer_file }}"
+    - harbor_artifacts.yml
+  when:
+    - stage_harbor_push | bool
+    - stage_harbor_repo_url | length > 0
+
+- name: Find the staged Docker RPMs
+  ansible.builtin.find:
+    paths: "{{ stage_harbor_output_dir }}/docker"
+    patterns: "*.rpm"
+  register: stage_harbor_rpms
+  when:
+    - stage_harbor_push | bool
+    - stage_harbor_docker_rpms | bool
+
+- name: Push the Docker RPMs to the repository
+  ansible.builtin.uri:
+    url: "{{ stage_harbor_repo_url }}/{{ stage_harbor_repo_path }}/docker/{{ item.path | basename }}"
+    method: PUT
+    src: "{{ item.path }}"
+    remote_src: true
+    force_basic_auth: "{{ (stage_harbor_repo_username | length > 0) | bool }}"
+    url_username: "{{ stage_harbor_repo_username | default(omit, true) }}"
+    url_password: "{{ stage_harbor_repo_password | default(omit, true) }}"
+    headers: "{{ stage_harbor_repo_headers }}"
+    validate_certs: "{{ stage_harbor_repo_validate_certs }}"
+    status_code: [200, 201, 204]
+  loop: "{{ stage_harbor_rpms.files | default([]) }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  when:
+    - stage_harbor_push | bool
+    - stage_harbor_docker_rpms | bool
+
+- name: Show what to carry across
+  ansible.builtin.debug:
+    msg:
+      - "Kit:      {{ stage_harbor_output_dir }}"
+      - "sha256:   {{ stage_harbor_installer.stat.checksum }}"
+      - "Manifest: copy harbor_artifacts.yml into inventory/group_vars/registry/ in each environment"

@@ -1,0 +1,13 @@
+---
+# host_vars/registry01.example.coach.yml
+
+# The name clients and the Supervisor use — forward and reverse DNS, certificate subject
+harbor_hostname:            registry.example.coach
+
+# Registry content on its own disk (configure_volumes can build it)
+harbor_data_volume:         /data
+# linux_volume_groups:
+#   - name: vg_registry
+#     pvs: [/dev/sdb]
+# linux_logical_volumes:
+#   - { lv: lv_data, vg: vg_registry, size: 150g, fstype: xfs, mount: /data }

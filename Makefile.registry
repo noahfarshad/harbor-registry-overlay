@@ -1,0 +1,17 @@
+# ---------------------------------------------------------------------------
+# Harbor registry (air-gapped)
+# Append to Makefile and add the three targets to `make help`.
+# ---------------------------------------------------------------------------
+STAGE_ARGS ?=
+
+.PHONY: stage-harbor linux-registry verify-registry
+stage-harbor:
+	ansible-playbook playbooks/linux/stage_harbor_artifacts.yml $(STAGE_ARGS)
+
+linux-registry:
+	@if [ -z "$(HOST)" ]; then echo "Usage: make linux-registry HOST=hostname"; exit 1; fi
+	ansible-playbook $(APB_FLAGS) playbooks/linux/configure_registry.yml
+
+verify-registry:
+	@if [ -z "$(HOST)" ]; then echo "Usage: make verify-registry HOST=hostname"; exit 1; fi
+	ansible-playbook $(APB_FLAGS) playbooks/linux/verify_registry.yml

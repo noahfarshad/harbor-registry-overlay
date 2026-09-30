@@ -1,0 +1,24 @@
+---
+# host_vars/registry01.example.coach.yml
+#
+# Per-host overrides for the registry. Only set values here that genuinely
+# differ from group_vars/registry/main.yml and group_vars/all/artifacts.yml.
+
+# ===========================================================================
+# Registry identity — REQUIRED
+# ===========================================================================
+# The name clients and the Supervisor use. Needs forward and reverse DNS and is
+# the subject of the IdM certificate.
+harbor_hostname:            registry.example.coach
+
+# ===========================================================================
+# Storage — a separate disk for registry content is recommended
+# ===========================================================================
+harbor_data_volume:         /data
+
+# ===========================================================================
+# Artifact source override — only if this host differs from the environment
+# ===========================================================================
+# This environment has no repository; read from the transfer disk instead:
+# artifact_source:          staged
+# artifact_staged_on:       target

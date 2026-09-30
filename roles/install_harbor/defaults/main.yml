@@ -1,0 +1,23 @@
+---
+# defaults file for install_harbor
+#
+# REQUIRED inputs, normally from group_vars/registry and vault:
+# harbor_hostname: ""
+# harbor_admin_password: "{{ vault_harbor_admin_password }}"
+# harbor_db_password: "{{ vault_harbor_db_password }}"
+# harbor_installer_file: ""            # from harbor_artifacts.yml
+
+harbor_install_parent: "{{ install_root | default('/opt') }}"
+harbor_install_dir: "{{ harbor_install_parent }}/harbor"
+harbor_download_dir: "{{ stage_root | default('/var/staging') }}/harbor"
+harbor_data_volume: /data
+harbor_http_port: 80
+harbor_https_port: 443
+harbor_with_trivy: false              # Trivy needs an internet-fed vulnerability database
+harbor_manage_systemd: true
+harbor_version_marker: "{{ harbor_install_dir }}/.installed_version"
+harbor_upgrade_backup_db: true        # copy the database directory before an in-place upgrade
+
+# desired_state: absent
+harbor_purge_install: false           # also delete harbor_install_dir
+harbor_purge_data: false              # also delete harbor_data_volume — registry content

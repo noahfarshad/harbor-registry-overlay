@@ -1,0 +1,12 @@
+---
+# group_vars/all/vault.yml.example
+#
+# Copy to vault.yml, replace every value, then:
+#   ansible-vault encrypt inventory/group_vars/all/vault.yml
+
+vault_repo_username:          ""
+vault_repo_password:          ""
+vault_artifactory_token:      "REPLACE-WITH-ARTIFACTORY-ACCESS-TOKEN"
+
+vault_harbor_admin_password:  "REPLACE-WITH-HARBOR-ADMIN-PASSWORD"
+vault_harbor_db_password:     "REPLACE-WITH-HARBOR-DATABASE-PASSWORD"

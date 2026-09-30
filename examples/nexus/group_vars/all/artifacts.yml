@@ -1,0 +1,10 @@
+---
+# group_vars/all/artifacts.yml — Nexus raw hosted repository
+
+artifact_source:              repo
+artifact_repo_url:            "https://nexus.example.coach/repository/vmware-raw"
+artifact_repo_username:       "{{ vault_repo_username }}"
+artifact_repo_password:       "{{ vault_repo_password }}"
+artifact_repo_headers:        {}
+artifact_repo_validate_certs: true
+artifact_staged_on:           target

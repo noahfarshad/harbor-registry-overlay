@@ -1,0 +1,9 @@
+---
+# group_vars/all/artifacts.yml — attached storage on the registry host
+#
+# Mount the transfer disk at artifact_staging before running the play, e.g.
+#   mount /dev/sr0 /var/staging/artifacts        (ISO)
+#   mount repo.example.coach:/export/transfer /var/staging/artifacts   (NFS)
+
+artifact_source:              staged
+artifact_staged_on:           target

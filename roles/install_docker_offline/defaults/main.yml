@@ -1,0 +1,18 @@
+---
+# defaults file for install_docker_offline
+#
+# Unlike install_docker, this role never adds download.docker.com. Packages come
+# from the environment's own yum repository (configure_yum / add_yum_repo) or
+# from RPMs staged next to the other artifacts.
+
+docker_offline_source: yum                  # yum | staged
+docker_offline_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+docker_offline_rpm_path: "harbor/docker"    # under artifact_staging, for docker_offline_source: staged
+docker_offline_allowerasing: true           # lets docker-ce replace conflicting podman-docker bits
+docker_offline_disable_gpg_check: false     # set true only for staged RPMs without an imported key
+docker_offline_landing_dir: "{{ stage_root | default('/var/staging') }}/docker-rpms"   # used when RPMs come from the control host

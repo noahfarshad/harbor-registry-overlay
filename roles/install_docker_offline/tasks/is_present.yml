@@ -1,0 +1,93 @@
+---
+# tasks file for install_docker_offline — present
+
+- name: Install Docker Engine and Compose from the environment repository
+  ansible.builtin.dnf:
+    name: "{{ docker_offline_packages }}"
+    state: present
+    allowerasing: "{{ docker_offline_allowerasing }}"
+  when: docker_offline_source == 'yum'
+
+- name: Find the staged Docker RPMs on the registry host
+  ansible.builtin.find:
+    paths: "{{ artifact_staging }}/{{ docker_offline_rpm_path }}"
+    patterns: "*.rpm"
+  register: docker_offline_rpms_target
+  when:
+    - docker_offline_source == 'staged'
+    - artifact_staged_on | default('target') == 'target'
+
+- name: Find the staged Docker RPMs on the control host
+  ansible.builtin.find:
+    paths: "{{ artifact_staging }}/{{ docker_offline_rpm_path }}"
+    patterns: "*.rpm"
+  register: docker_offline_rpms_controller
+  delegate_to: localhost
+  become: false
+  when:
+    - docker_offline_source == 'staged'
+    - artifact_staged_on | default('target') == 'controller'
+
+- name: Create a landing directory for RPMs copied from the control host
+  ansible.builtin.file:
+    path: "{{ docker_offline_landing_dir }}"
+    state: directory
+    owner: root
+    group: root
+    mode: "0750"
+  when:
+    - docker_offline_source == 'staged'
+    - artifact_staged_on | default('target') == 'controller'
+
+- name: Copy the RPMs from the control host
+  ansible.builtin.copy:
+    src: "{{ item.path }}"
+    dest: "{{ docker_offline_landing_dir }}/{{ item.path | basename }}"
+    mode: "0640"
+  loop: "{{ docker_offline_rpms_controller.files | default([]) }}"
+  loop_control:
+    label: "{{ item.path | basename }}"
+  when:
+    - docker_offline_source == 'staged'
+    - artifact_staged_on | default('target') == 'controller'
+
+- name: Build the list of RPMs to install
+  ansible.builtin.set_fact:
+    docker_offline_rpm_files: >-
+      {{ (docker_offline_rpms_target.files | default([]) | map(attribute='path') | list)
+         if artifact_staged_on | default('target') == 'target'
+         else (docker_offline_rpms_controller.files | default([])
+               | map(attribute='path') | map('basename')
+               | map('regex_replace', '^', docker_offline_landing_dir ~ '/') | list) }}
+  when: docker_offline_source == 'staged'
+
+- name: Stop if no staged RPMs were found
+  ansible.builtin.assert:
+    that:
+      - docker_offline_rpm_files | length > 0
+    fail_msg: "No RPMs under {{ artifact_staging }}/{{ docker_offline_rpm_path }} ({{ artifact_staged_on | default('target') }})."
+    quiet: true
+  when: docker_offline_source == 'staged'
+
+- name: Install Docker Engine and Compose from the staged RPMs
+  ansible.builtin.dnf:
+    name: "{{ docker_offline_rpm_files }}"
+    state: present
+    allowerasing: "{{ docker_offline_allowerasing }}"
+    disable_gpg_check: "{{ docker_offline_disable_gpg_check }}"
+  when: docker_offline_source == 'staged'
+
+- name: Start Docker and enable it at boot
+  ansible.builtin.systemd:
+    name: docker
+    state: started
+    enabled: true
+
+- name: Confirm Docker Compose v2 is available
+  ansible.builtin.command: docker compose version --short
+  register: docker_offline_compose
+  changed_when: false
+
+- name: Report the Compose version
+  ansible.builtin.debug:
+    msg: "Docker Compose {{ docker_offline_compose.stdout }}"

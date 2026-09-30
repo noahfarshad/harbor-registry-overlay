@@ -1,0 +1,9 @@
+---
+# handlers file for install_harbor
+
+- name: Reinstall harbor
+  ansible.builtin.command:
+    cmd: "./install.sh{{ ' --with-trivy' if harbor_with_trivy | bool else '' }}"
+    chdir: "{{ harbor_install_dir }}"
+  changed_when: true
+  timeout: 1800

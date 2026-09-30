@@ -1,0 +1,40 @@
+---
+# tasks file for configure_harbor_projects — present
+
+- name: Wait for the Harbor API to answer
+  ansible.builtin.uri:
+    url: "{{ harbor_api_url }}/health"
+    validate_certs: "{{ harbor_api_validate_certs }}"
+    status_code: 200
+  register: harbor_projects_health
+  retries: "{{ harbor_api_wait_retries }}"
+  delay: "{{ harbor_api_wait_delay }}"
+  until: harbor_projects_health.status | default(0) == 200
+  changed_when: false
+
+- name: Stop if any Harbor component is unhealthy
+  ansible.builtin.assert:
+    that:
+      - harbor_projects_health.json.status == 'healthy'
+    fail_msg: "Harbor reports {{ harbor_projects_health.json.status }}: {{ harbor_projects_health.json.components | default([]) }}"
+    quiet: true
+
+- name: Create the projects
+  ansible.builtin.uri:
+    url: "{{ harbor_api_url }}/projects"
+    method: POST
+    body_format: json
+    body:
+      project_name: "{{ item.name }}"
+      public: "{{ item.public | default(false) | bool }}"
+    force_basic_auth: true
+    url_username: admin
+    url_password: "{{ harbor_admin_password }}"
+    validate_certs: "{{ harbor_api_validate_certs }}"
+    status_code: [201, 409]
+  loop: "{{ harbor_projects }}"
+  loop_control:
+    label: "{{ item.name }}"
+  register: harbor_projects_created
+  changed_when: harbor_projects_created.status == 201
+  no_log: true

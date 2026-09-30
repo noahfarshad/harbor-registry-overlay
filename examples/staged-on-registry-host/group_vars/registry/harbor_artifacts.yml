@@ -1,0 +1,9 @@
+---
+# group_vars/registry/harbor_artifacts.yml
+#
+# Replace with the file stage_harbor_artifacts generates. The placeholder below
+# is deliberately invalid, so the play stops until the real checksum is in place.
+
+harbor_version:           "2.14.0"
+harbor_installer_file:    "harbor-offline-installer-v2.14.0.tgz"
+harbor_installer_sha256:  "REPLACE-WITH-SHA256-FROM-STAGING"

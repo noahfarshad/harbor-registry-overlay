@@ -1,0 +1,35 @@
+---
+# group_vars/all/artifacts.yml
+#
+# Where roles pull artifacts from in THIS environment. Every environment is
+# air-gapped and has its own inventory, so each sets its own values here.
+# Any host can override them in host_vars.
+#
+# Flow: staged on the unclassified connected side -> carried across ->
+#       pushed into this environment's repository -> pulled from there.
+#       Or, with no repository: read straight from attached storage.
+
+# ===========================================================================
+# Source — repo | staged
+# ===========================================================================
+artifact_source:              repo
+
+# ===========================================================================
+# repo — Nexus raw hosted or Artifactory generic, inside this environment
+# ===========================================================================
+artifact_repo_url:            "https://nexus.example.coach/repository/vmware-raw"
+artifact_repo_username:       "{{ vault_repo_username }}"
+artifact_repo_password:       "{{ vault_repo_password }}"
+artifact_repo_headers:        {}
+# Artifactory with an access token instead of basic auth:
+# artifact_repo_username:     ""
+# artifact_repo_headers:
+#   Authorization: "Bearer {{ vault_artifactory_token }}"
+artifact_repo_validate_certs: true
+
+# ===========================================================================
+# staged — attached storage (transfer media, NFS export, mounted ISO)
+# ===========================================================================
+# artifact_staging is already set in group_vars/all/main.yml (/var/staging/artifacts)
+artifact_staged_on:           target       # target = mounted on the registry host
+                                           # controller = mounted on the Ansible control host

@@ -1,0 +1,53 @@
+---
+# tasks file for verify_harbor — present (read-only)
+
+- name: List the running Harbor containers
+  ansible.builtin.command:
+    cmd: docker compose ps --services --filter status=running
+    chdir: "{{ harbor_install_dir }}"
+  register: harbor_verify_services
+  changed_when: false
+
+- name: Check the API reports healthy
+  ansible.builtin.uri:
+    url: "{{ harbor_api_url }}/health"
+    validate_certs: "{{ harbor_api_validate_certs }}"
+  register: harbor_verify_health
+  changed_when: false
+
+- name: List the projects
+  ansible.builtin.uri:
+    url: "{{ harbor_api_url }}/projects?page_size=100"
+    force_basic_auth: true
+    url_username: admin
+    url_password: "{{ harbor_admin_password }}"
+    validate_certs: "{{ harbor_api_validate_certs }}"
+  register: harbor_verify_projects
+  changed_when: false
+  no_log: true
+
+- name: Confirm every expected project exists
+  ansible.builtin.assert:
+    that:
+      - item.name in (harbor_verify_projects.json | map(attribute='name') | list)
+    fail_msg: "Project {{ item.name }} is missing."
+    quiet: true
+  loop: "{{ harbor_projects | default([]) }}"
+  loop_control:
+    label: "{{ item.name }}"
+
+- name: Check the certificate expiry window, in days — {{ harbor_verify_cert_warn_days }}
+  ansible.builtin.command:
+    cmd: "openssl x509 -in {{ harbor_tls_cert }} -noout -checkend {{ harbor_verify_cert_warn_days * 86400 }}"
+  register: harbor_verify_cert
+  changed_when: false
+  failed_when: false
+
+- name: Summary
+  ansible.builtin.debug:
+    msg:
+      - "Endpoint:    https://{{ harbor_hostname }}:{{ harbor_https_port | default(443) }}"
+      - "Health:      {{ harbor_verify_health.json.status }}"
+      - "Services:    {{ harbor_verify_services.stdout_lines | join(', ') }}"
+      - "Projects:    {{ harbor_verify_projects.json | map(attribute='name') | list | join(', ') }}"
+      - "Certificate: {{ 'OK' if harbor_verify_cert.rc == 0 else 'expires within ' ~ harbor_verify_cert_warn_days ~ ' days' }}"

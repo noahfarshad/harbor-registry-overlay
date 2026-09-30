@@ -1,0 +1,27 @@
+---
+# playbooks/linux/stage_harbor_artifacts.yml
+#
+# CONNECTED SIDE ONLY. Downloads the Harbor offline installer, writes
+# harbor_artifacts.yml (version + sha256), and optionally pushes the kit to the
+# Nexus or Artifactory repository that the air-gapped environments pull from.
+#
+# Usage:
+#   make stage-harbor
+#   # or:
+#   ansible-playbook playbooks/linux/stage_harbor_artifacts.yml \
+#                    -e stage_harbor_version=2.14.0 \
+#                    -e stage_harbor_push=true \
+#                    -e stage_harbor_repo_url=https://nexus.example.coach/repository/vmware-raw
+#
+# Output: artifacts/harbor/ — carry it across, and copy harbor_artifacts.yml to
+# inventory/group_vars/registry/ in each environment.
+
+- name: Stage Harbor artifacts for transfer
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  vars:
+    desired_state: present
+
+  roles:
+    - { role: stage_harbor_artifacts, tags: [harbor, stage] }

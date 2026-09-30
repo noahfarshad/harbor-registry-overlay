@@ -1,0 +1,31 @@
+---
+# defaults file for stage_harbor_artifacts
+#
+# Runs on the CONNECTED side only. Everything this role produces is carried
+# into the air-gapped environments, either through a repository push or on
+# transfer media.
+
+stage_harbor_version: "2.14.0"
+stage_harbor_installer_file: "harbor-offline-installer-v{{ stage_harbor_version }}.tgz"
+stage_harbor_release_url: "https://github.com/goharbor/harbor/releases/download/v{{ stage_harbor_version }}"
+
+# Where the kit is assembled on the connected host
+stage_harbor_output_dir: "{{ playbook_dir }}/../../artifacts/harbor"
+
+# Docker Engine and Compose RPMs, for environments without a mirrored docker repo
+stage_harbor_docker_rpms: false
+stage_harbor_docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+
+# Optional push to a repository (Nexus raw hosted / Artifactory generic)
+stage_harbor_push: false
+stage_harbor_repo_url: ""            # e.g. https://nexus.example.coach/repository/vmware-raw
+stage_harbor_repo_path: "harbor"
+stage_harbor_repo_username: ""
+stage_harbor_repo_password: ""
+stage_harbor_repo_headers: {}        # e.g. {"Authorization": "Bearer {{ vault_artifactory_token }}"}
+stage_harbor_repo_validate_certs: true
