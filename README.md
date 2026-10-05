@@ -1,9 +1,9 @@
 # Harbor registry overlay for ansible-automation
 
-Drop-in roles and playbooks that stand up the disconnected registry the air-gap kit actually uses.
+The current pathway is [harbor-airgap-kit](https://github.com/noahfarshad/harbor-airgap-kit): one inventory, three settings, not a drop-in. This repository is the earlier overlay. The write-up now describes the kit.
 
 License: GPL-3.0. Built and proved out for [essential.coach](https://essential.coach).
-Full write-up: [Air-Gapped VKS on VCF 9: How the Kit Actually Arrives](https://essential.coach/air-gapped-vks-on-vcf-9/).
+Full write-up: [Air-Gapped VKS on VCF 9: One Inventory, Three Settings](https://essential.coach/air-gapped-vks-on-vcf-9/).
 
 Drop-in additions for an air-gapped Harbor registry, laid out to match the
 `ansible-automation` repository: single-purpose roles with the `desired_state`
