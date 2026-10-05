@@ -1,0 +1,11 @@
+# examples/example/hosts
+#
+# One inventory. The three arrival questions are settings in group_vars,
+# not three other inventories. Copy this directory to inventory/ and replace
+# example.coach.
+
+[registry]
+registry01.example.coach
+
+[linux:children]
+registry

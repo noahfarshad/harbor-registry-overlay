@@ -1,9 +1,13 @@
 # Harbor registry — air-gapped
 
-Deploys Harbor as containers from its official offline installer, on a RHEL
-host, in an environment with no internet access. Follows the repo conventions:
-single-purpose roles with the `desired_state` dispatcher, a paved-path playbook,
-and everything environment-specific in `group_vars` and `host_vars`.
+Deploys Harbor as containers from its official offline installer, on Podman
+or Docker CE, on a RHEL 9 host with no internet access. The transfer tool is
+harbor-airgap-kit. This file is the drop-in build: `playbooks/linux/configure_registry.yml`.
+
+The three arrival questions are settings in one inventory. See `examples/example`.
+`harbor_container_runtime` is `podman` or `docker`. Changing it requires
+`playbooks/linux/remove_registry.yml` first. The playbook does not use an
+Ansible collection.
 
 ---
 
@@ -28,10 +32,11 @@ and its own vault. Nothing is shared between environments.
 | Role | Runs | What it does |
 |---|---|---|
 | `stage_harbor_artifacts` | connected side | Downloads the installer, writes `harbor_artifacts.yml`, optionally pushes to a repository |
-| `install_docker_offline` | registry host | Docker Engine and Compose from the environment yum repo or staged RPMs |
+| `install_podman_offline` | registry host | Podman, netavark, and aardvark-dns when `harbor_container_runtime` is `podman` |
+| `install_docker_offline` | registry host | Docker CE when `harbor_container_runtime` is `docker`, from the server's repos or staged RPMs |
 | `download_harbor_artifacts` | registry host | Pulls or copies the installer, verifies sha256 |
-| `configure_harbor_tls` | registry host | IdM certificate with certmonger renewal, or staged certificate |
-| `install_harbor` | registry host | Unpacks, writes `harbor.yml` from the shipped template, runs `install.sh`, systemd unit |
+| `configure_harbor_tls` | registry host | Staged certificate and CA, or IdM if `harbor_tls_mode` is `ipa` |
+| `install_harbor` | registry host | Unpacks, runs Harbor's prepare step, adapts the compose file for Podman, systemd unit |
 | `configure_harbor_projects` | registry host | Creates `sup-services`, `tanzu-packages`, `tkg` through the API |
 | `verify_harbor` | registry host | Read-only checks |
 

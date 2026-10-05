@@ -1,5 +1,5 @@
 ---
-# tasks file for configure_harbor_tls — present
+# tasks file for configure_harbor_tls: present
 
 - name: Request the certificate from IdM and hand renewal to certmonger
   ansible.builtin.command:
@@ -24,6 +24,26 @@
   until: "'MONITORING' in harbor_tls_ipa_status.stdout"
   when: harbor_tls_mode == 'ipa'
 
+- name: Find the staged certificate, key and CA
+  ansible.builtin.stat:
+    path: "{{ item }}"
+  loop: "{{ [harbor_tls_staged_cert, harbor_tls_staged_key] + ([harbor_tls_staged_ca] if harbor_tls_staged_ca | length > 0 else []) }}"
+  register: harbor_tls_staged_files
+  delegate_to: "{{ 'localhost' if artifact_staged_on | default('target') == 'controller' else inventory_hostname }}"
+  become: "{{ artifact_staged_on | default('target') != 'controller' }}"
+  when: harbor_tls_mode == 'staged'
+
+- name: Stop if any of them is missing
+  ansible.builtin.assert:
+    that:
+      - harbor_tls_staged_files.results | rejectattr('stat.exists') | list | length == 0
+    fail_msg: >-
+      Missing: {{ harbor_tls_staged_files.results | rejectattr('stat.exists') | map(attribute='item') | join(', ') }}.
+      Put the certificate and key for {{ harbor_hostname }}, and the CA that issued them, there on the
+      {{ 'control host' if artifact_staged_on | default('target') == 'controller' else 'registry server' }}.
+    quiet: true
+  when: harbor_tls_mode == 'staged'
+
 - name: Copy the staged certificate
   ansible.builtin.copy:
     src: "{{ harbor_tls_staged_cert }}"
@@ -42,7 +62,24 @@
     owner: root
     group: root
     mode: "0600"
+  diff: false                 # never print the private key, even with --diff
   when: harbor_tls_mode == 'staged'
+
+- name: Trust the CA that issued the certificate
+  ansible.builtin.copy:
+    src: "{{ harbor_tls_staged_ca }}"
+    dest: "{{ harbor_tls_ca_anchor }}"
+    remote_src: "{{ artifact_staged_on | default('target') == 'target' }}"
+    owner: root
+    group: root
+    mode: "0644"
+  notify: Update the CA trust
+  when:
+    - harbor_tls_mode == 'staged'
+    - harbor_tls_staged_ca | length > 0
+
+- name: Use the updated trust before Harbor's API is called
+  ansible.builtin.meta: flush_handlers
 
 - name: Read the certificate
   ansible.builtin.command:

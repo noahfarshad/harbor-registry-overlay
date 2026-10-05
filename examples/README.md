@@ -1,21 +1,31 @@
-# Example inventories
+# Example inventory
 
-Four complete inventories, one per way an air-gapped environment can receive the
-kit. Pick the one that matches, copy it to `inventory/`, and replace the values.
+One inventory. The three arrival questions are settings, not four directories.
 
-| Example | Artifacts from | Certificate | Docker packages |
-|---|---|---|---|
-| `nexus/` | Nexus raw hosted, basic auth | IdM (`ipa`) | Local yum mirror |
-| `artifactory/` | Artifactory generic, access token | IdM (`ipa`) | Local yum mirror |
-| `staged-on-registry-host/` | Transfer disk mounted on the registry host | Staged | Staged RPMs |
-| `staged-on-control-host/` | Transfer disk mounted on the control host | IdM (`ipa`) | Staged RPMs |
+| Question | Setting | Example value |
+|---|---|---|
+| Where do the Harbor files come from? | `nexus_enabled` | `false` — staged on the control host. `true` reads them from Nexus |
+| Where does the certificate come from? | `harbor_tls_mode` | `staged`. `ipa` if the server is an IdM client |
+| Where does the container engine come from? | `harbor_container_runtime` | `podman`. `docker` for Docker CE |
+
+Artifactory is not a fourth inventory. Set `nexus_enabled: true` and point `artifact_repo_url` at the Artifactory generic repository, or set `artifact_repo_headers` to a bearer token.
 
 ```bash
-cp -r examples/nexus inventory
+cp -r examples/example inventory
 cp inventory/group_vars/all/vault.yml.example inventory/group_vars/all/vault.yml
-$EDITOR inventory/group_vars/all/vault.yml && ansible-vault encrypt inventory/group_vars/all/vault.yml
+# set the Harbor passwords, then:
+ansible-vault encrypt inventory/group_vars/all/vault.yml
+# after the connected side has staged the installer:
 cp artifacts/harbor/harbor_artifacts.yml inventory/group_vars/registry/
 make linux-registry HOST=registry01.example.coach
 ```
 
-`docs/EXAMPLES.md` walks through every step around these files.
+Switching to Docker CE is a remove and a rebuild:
+
+```bash
+make remove-registry HOST=registry01.example.coach
+# set harbor_container_runtime: docker in group_vars/registry/main.yml
+make linux-registry HOST=registry01.example.coach
+```
+
+The transfer tool that builds the folder and checks it is [harbor-airgap-kit](https://github.com/noahfarshad/harbor-airgap-kit). These roles are the build that kit runs, laid out to drop into ansible-automation.

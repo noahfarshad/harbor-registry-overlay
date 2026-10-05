@@ -1,0 +1,30 @@
+---
+# playbooks/linux/remove_registry.yml
+#
+# Takes Harbor off the host and leaves the container runtime installed.
+# Run this before changing harbor_container_runtime, then run
+# configure_registry.yml again. The data volume stays unless
+# harbor_purge_data is true.
+#
+# Usage:
+#   make remove-registry HOST=registry01.example.coach
+
+- name: Remove the Harbor container registry
+  hosts: registry
+  gather_facts: true
+  become: true
+  vars:
+    desired_state: absent
+
+  pre_tasks:
+    - name: Confirm the host is a RedHat-family member of [registry]
+      ansible.builtin.assert:
+        that:
+          - ansible_facts['os_family'] == 'RedHat'
+          - inventory_hostname in groups['registry']
+        fail_msg: "Host must be a RedHat-family member of [registry]"
+
+  roles:
+    - { role: install_harbor, tags: [harbor, install] }
+    - { role: configure_harbor_tls, tags: [harbor, tls] }
+    - { role: download_harbor_artifacts, tags: [harbor, artifacts] }

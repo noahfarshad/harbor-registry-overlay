@@ -1,5 +1,5 @@
 ---
-# tasks file for download_harbor_artifacts — present
+# tasks file for download_harbor_artifacts: present
 
 - name: Confirm the release inputs are loaded
   ansible.builtin.assert:

@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   role_name: configure_harbor_projects
-  author: Broadcom Professional Services
+  author: Noah Farshad
   description: "Create the Harbor projects the Supervisor and VKS content lives in, through the Harbor API."
   license: GPL-3.0-only
   min_ansible_version: "2.16"

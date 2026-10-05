@@ -14,5 +14,6 @@ docker_offline_packages:
   - docker-compose-plugin
 docker_offline_rpm_path: "harbor/docker"    # under artifact_staging, for docker_offline_source: staged
 docker_offline_allowerasing: true           # lets docker-ce replace conflicting podman-docker bits
-docker_offline_disable_gpg_check: false     # set true only for staged RPMs without an imported key
+docker_offline_gpg_key: "harbor/RPM-GPG-KEY-docker"   # under artifact_staging: imported before staged RPMs are installed
+docker_offline_disable_gpg_check: false     # true skips the signature check on staged RPMs; avoid
 docker_offline_landing_dir: "{{ stage_root | default('/var/staging') }}/docker-rpms"   # used when RPMs come from the control host

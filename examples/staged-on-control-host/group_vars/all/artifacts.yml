@@ -1,7 +1,0 @@
----
-# group_vars/all/artifacts.yml — attached storage on the Ansible control host
-#
-# artifact_staging is read on the control host and copied to the registry host.
-
-artifact_source:              staged
-artifact_staged_on:           controller

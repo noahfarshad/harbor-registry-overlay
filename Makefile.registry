@@ -1,10 +1,12 @@
 # ---------------------------------------------------------------------------
 # Harbor registry (air-gapped)
-# Append to Makefile and add the three targets to `make help`.
+# Append to Makefile and add the targets to `make help`.
+# Runtime is harbor_container_runtime in the inventory, not a make flag.
+# HOST is checked here; ansible-automation's APB_FLAGS applies the limit.
 # ---------------------------------------------------------------------------
 STAGE_ARGS ?=
 
-.PHONY: stage-harbor linux-registry verify-registry
+.PHONY: stage-harbor linux-registry verify-registry remove-registry
 stage-harbor:
 	ansible-playbook playbooks/linux/stage_harbor_artifacts.yml $(STAGE_ARGS)
 
@@ -15,3 +17,7 @@ linux-registry:
 verify-registry:
 	@if [ -z "$(HOST)" ]; then echo "Usage: make verify-registry HOST=hostname"; exit 1; fi
 	ansible-playbook $(APB_FLAGS) playbooks/linux/verify_registry.yml
+
+remove-registry:
+	@if [ -z "$(HOST)" ]; then echo "Usage: make remove-registry HOST=hostname"; exit 1; fi
+	ansible-playbook $(APB_FLAGS) playbooks/linux/remove_registry.yml

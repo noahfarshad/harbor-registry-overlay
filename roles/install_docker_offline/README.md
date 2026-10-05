@@ -7,7 +7,7 @@ environment can't reach; this one only uses what is already inside.
 
 | `docker_offline_source` | Behaviour |
 |---|---|
-| `yum` | Install from the environment's yum repository — the packages must be mirrored there |
+| `yum` | Install from the server's own repositories (already installed is fine too) |
 | `staged` | Install the RPMs under `artifact_staging/docker_offline_rpm_path` |
 
 Harbor's installer is built for Docker Engine and Compose; it doesn't run on Podman.
@@ -21,7 +21,8 @@ Role Variables
 | `docker_offline_packages` | Docker CE set | Packages to install |
 | `docker_offline_rpm_path` | `harbor/docker` | Sub-path under `artifact_staging` |
 | `docker_offline_allowerasing` | `true` | Resolve conflicts with Podman's docker shim |
-| `docker_offline_disable_gpg_check` | `false` | Only for staged RPMs without an imported key |
+| `docker_offline_gpg_key` | `harbor/RPM-GPG-KEY-docker` | Docker's signing key from the transfer, under `artifact_staging`; imported before staged RPMs are installed |
+| `docker_offline_disable_gpg_check` | `false` | `true` skips the signature check on staged RPMs |
 
 Example Playbook
 ----------------

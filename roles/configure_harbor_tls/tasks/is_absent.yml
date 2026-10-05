@@ -1,5 +1,5 @@
 ---
-# tasks file for configure_harbor_tls — absent
+# tasks file for configure_harbor_tls: absent
 
 - name: Stop certmonger tracking the certificate
   ansible.builtin.command:

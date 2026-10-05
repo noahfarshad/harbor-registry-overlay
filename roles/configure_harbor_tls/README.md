@@ -8,13 +8,22 @@ Puts the registry certificate in place.
 | `ipa` | `ipa-getcert request` for `harbor_tls_principal`; certmonger tracks and renews it |
 | `staged` | Copies a certificate and key from attached storage |
 
-For `ipa`, create the service principal once, from any IdM admin session:
+For `ipa`, create the service principal once, from any IdM admin session.
 
-    ipa service-add HTTP/registry.example.coach
-    ipa service-add-host HTTP/registry.example.coach --hosts=registry01.example.coach
+When `harbor_hostname` is the host's own FQDN:
 
-If `harbor_hostname` is an alias rather than the host's own FQDN, add the alias
-as a DNS record and let the host manage the principal as above.
+    ipa service-add HTTP/<host fqdn>
+
+When `harbor_hostname` is a name of its own (an alias, which I'd recommend so
+the registry can move hosts later), add its DNS records first, then:
+
+    ipa service-add HTTP/<registry name> --skip-host-check
+    ipa service-add-host HTTP/<registry name> --hosts=<host fqdn>
+
+`--skip-host-check` (IdM 4.7 and later) creates the service without a host
+object of the same name. `--force` only skips the DNS check and does not
+replace it. `service-add-host` lets the registry host request and renew the
+certificate.
 
 Role Variables
 --------------

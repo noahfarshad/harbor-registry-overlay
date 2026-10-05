@@ -1,5 +1,5 @@
 ---
-# tasks file for configure_harbor_projects — absent
+# tasks file for configure_harbor_projects: absent
 #
 # Harbor refuses to delete a project that still holds repositories, so this
 # only removes empty projects. That is deliberate.

@@ -1,24 +1,35 @@
 ---
 # playbooks/linux/configure_registry.yml
 #
-# Deploys the Harbor container registry from its offline installer on a RHEL
-# host, with no internet access. Artifacts come from the environment's
-# repository or attached storage, as set in group_vars/all/artifacts.yml.
-# Run AFTER the host baseline (build_linux_vm.yml or an existing host).
+# Builds Harbor from its offline installer on a RHEL 9 host with no internet
+# access. Podman is the default. Docker CE is harbor_container_runtime: docker.
+# Switching runtime is a remove and a rebuild: playbooks/linux/remove_registry.yml
+# first, then change the setting, then run this playbook again.
 #
-# Usage:
+# Usage, after this overlay is copied into ansible-automation:
 #   make linux-registry HOST=registry01.example.coach
-#   # or:
-#   ansible-playbook -i inventory/hosts \
-#                    playbooks/linux/configure_registry.yml \
-#                    --limit registry01.example.coach
 #
-# REQUIRED variables:
-#   group_vars/all/artifacts.yml           artifact_source and its settings
-#   group_vars/registry/harbor_artifacts.yml  harbor_installer_file, harbor_installer_sha256
-#   group_vars/registry/main.yml           harbor_projects, ports, tls mode
-#   host_vars/<host>.yml                   harbor_hostname
-#   group_vars/all/vault.yml               vault_harbor_admin_password, vault_harbor_db_password
+# The three settings live in the inventory, not in a second example:
+#   nexus_enabled                 Harbor files from staged storage, or Nexus
+#   harbor_tls_mode               staged certificate, or ipa
+#   harbor_container_runtime      podman | docker
+
+- name: Check the inventory before connecting to any server
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Stop on placeholder values
+      ansible.builtin.assert:
+        that:
+          - (hostvars[item].ansible_host | default(item)) is not search('CHANGE_ME|REPLACE')
+          - (hostvars[item].harbor_hostname | default('')) is not search('CHANGE_ME|REPLACE')
+          - (hostvars[item].artifact_source | default('staged')) != 'repo' or
+            (hostvars[item].artifact_repo_url | default('')) is not search('CHANGE_ME|REPLACE')
+        fail_msg: >-
+          {{ item }} still has a CHANGE_ME value. Set the registry name in
+          host_vars and the artifact URL in group_vars/all/artifacts.yml first.
+        quiet: true
+      loop: "{{ groups['registry'] | default([]) }}"
 
 - name: Configure the Harbor container registry
   hosts: registry
@@ -28,48 +39,66 @@
     desired_state: present
 
   pre_tasks:
-    - name: Confirm host is a RedHat-family member of [registry]
+    - name: Confirm the host is a RedHat-family member of [registry]
       ansible.builtin.assert:
         that:
-          - ansible_os_family == 'RedHat'
+          - ansible_facts['os_family'] == 'RedHat'
           - inventory_hostname in groups['registry']
         fail_msg: "Host must be a RedHat-family member of [registry]"
 
-    - name: Confirm the release manifest and secrets are loaded
+    - name: Confirm the runtime, release manifest, name and secrets are set
       ansible.builtin.assert:
         that:
+          - harbor_container_runtime | default('podman') in ['podman', 'docker']
           - harbor_installer_sha256 | default('') | length == 64
           - harbor_hostname | default('') | length > 0
           - harbor_admin_password | default('') | length > 0
           - harbor_db_password | default('') | length > 0
         fail_msg: >-
-          Copy harbor_artifacts.yml into group_vars/registry/, set harbor_hostname
-          in host_vars, and set the Harbor passwords in vault.yml.
+          Set harbor_container_runtime to podman or docker, put a real sha256
+          in harbor_artifacts.yml, set harbor_hostname, and set the Harbor
+          passwords in vault.yml.
 
     - name: Confirm the attached storage is mounted
       ansible.builtin.stat:
-        path: "{{ artifact_staging }}"
-      register: registry_staging
-      failed_when: not (registry_staging.stat.isdir | default(false))
+        path: "{{ artifact_staging }}/{{ harbor_artifact_path | default('harbor') }}/{{ harbor_installer_file }}"
+      register: registry_kit_target
+      failed_when: not (registry_kit_target.stat.exists | default(false))
       when:
-        - artifact_source == 'staged'
+        - artifact_source | default('staged') == 'staged'
         - artifact_staged_on | default('target') == 'target'
 
   roles:
-    - { role: install_docker_offline, tags: [docker, install] }
-    - { role: download_harbor_artifacts, tags: [harbor, artifacts] }
-    - { role: configure_harbor_tls, tags: [harbor, tls] }
-    - { role: install_harbor, tags: [harbor, install] }
-    - { role: configure_harbor_projects, tags: [harbor, projects] }
+    - role: install_podman_offline
+      when: harbor_container_runtime | default('podman') == 'podman'
+      tags: [podman, install]
+    - role: install_docker_offline
+      when: harbor_container_runtime | default('podman') == 'docker'
+      tags: [docker, install]
+    - role: download_harbor_artifacts
+      tags: [harbor, artifacts]
+    - role: configure_harbor_tls
+      tags: [harbor, tls]
+    - role: install_harbor
+      tags: [harbor, install]
+    - role: configure_harbor_projects
+      tags: [harbor, projects]
 
   post_tasks:
     - name: Open firewall ports for Harbor
-      ansible.posix.firewalld:
-        port: "{{ item }}/tcp"
-        permanent: true
-        state: enabled
-        immediate: true
+      ansible.builtin.shell:
+        cmd: |
+          if firewall-cmd --permanent --query-port={{ item }}/tcp >/dev/null &&
+             firewall-cmd --query-port={{ item }}/tcp >/dev/null; then
+            echo open
+          else
+            firewall-cmd --permanent --add-port={{ item }}/tcp >/dev/null &&
+            firewall-cmd --add-port={{ item }}/tcp >/dev/null && echo opened
+          fi
+        executable: /bin/bash
       loop: "{{ firewall_open_tcp_ports }}"
+      register: harbor_firewall
+      changed_when: "'opened' in harbor_firewall.stdout"
       when: enable_firewall | bool
       tags: [firewall]
 

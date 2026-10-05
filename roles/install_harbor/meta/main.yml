@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   role_name: install_harbor
-  author: Broadcom Professional Services
+  author: Noah Farshad
   description: "Install Harbor from its offline installer as Docker Compose services, and manage it with systemd."
   license: GPL-3.0-only
   min_ansible_version: "2.16"
